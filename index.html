@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 </head>
 <body>
-<title>Gerador de legenda Drone DJI</title>
+<title>Gerador de legenda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -103,6 +103,13 @@ h3{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1
 .cal input:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .cal input[aria-invalid="true"]{outline:3px solid var(--err)}
 .cal-pts{overflow-x:auto}
+.seq{border-color:var(--orange)}
+.seq td.n{font-family:var(--f-mono);color:var(--muted);width:28px}
+.seq td.nm{font-family:var(--f-mono);font-size:12.5px;overflow-wrap:anywhere}
+.seq td.nm small{color:var(--muted)}
+.seq td.miss{color:var(--warn)}
+.seq td.act{white-space:nowrap;text-align:right}
+.seq td.act .btn-sm{padding:4px 9px;margin-left:4px}
 .cal-pts table{width:100%;border-collapse:collapse;font-size:13px}
 .cal-pts th{text-align:left;font-weight:600;color:var(--muted);padding:4px 6px;border-bottom:1px solid var(--line)}
 .cal-pts td{padding:5px 6px;border-bottom:1px dashed rgba(214,234,255,.12)}
@@ -194,7 +201,7 @@ h3{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>Gerador de legenda <span>Drone DJI</span></h1>
+      <h1>Gerador de legenda</h1>
           </div>
   </header>
 
@@ -206,6 +213,8 @@ h3{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1
         <table class="params box">
           <tr><td class="lab"><label for="pMode">Tipo de voo</label><small>Com o .SRT do drone ou calibrado pelo km</small></td>
               <td><select id="pMode"><option value="srt">Com legenda (.SRT)</option><option value="manual">Sem legenda (calibração manual)</option></select></td></tr>
+          <tr><td class="lab"><label for="pComp">Composição</label><small>Um arquivo ou vários vídeos em sequência</small></td>
+              <td><select id="pComp"><option value="one">Vídeo único</option><option value="seq">Vídeos em sequência</option></select></td></tr>
           <tr class="srtOnly"><td class="lab"><label for="pAngle">Ângulo de câmera (°)</label><small id="angleHint">Vazio = usa o ângulo do gimbal gravado no SRT</small></td>
               <td><input id="pAngle" type="number" step="0.1" min="0" max="90" placeholder="auto"></td></tr>
           <tr class="srtOnly"><td class="lab"><label for="pSense">Sentido do voo</label><small id="senseHint">Automático = pela direção da câmera</small></td>
@@ -307,6 +316,14 @@ h3{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1
           <button class="btn-sm" id="btnVideo2" type="button">Trocar vídeo</button>
           <button class="btn-sm" id="btnVideoOff" type="button">Remover vídeo</button>
         </div>
+        <div class="cal seq" id="seqBox" hidden>
+          <div class="cal-head"><b>Vídeos em sequência</b><span>Os vídeos são juntados na ordem da lista e viram uma legenda e um vídeo exportado únicos. Com legenda, adicione também o .SRT de cada vídeo (mesmo nome do arquivo de vídeo).</span></div>
+          <div class="cal-pts">
+            <table><thead><tr><th>#</th><th>Vídeo</th><th>Legenda</th><th></th></tr></thead><tbody id="seqList"></tbody></table>
+            <p class="notes" id="seqEmpty" style="margin:6px 0 0">Nenhum vídeo na sequência.</p>
+          </div>
+          <div class="corr-btns"><button class="btn-sm" id="seqAddBtn" type="button">+ Adicionar vídeos e legendas</button><button class="btn-sm" id="seqClearBtn" type="button">Limpar lista</button><span class="corr-now" id="seqInfo">—</span></div>
+        </div>
         <div class="cal" id="calBox" hidden>
           <div class="cal-head"><b>Calibração do vídeo</b><span>Informe o km do início e do fim do vídeo. Para mais precisão, pause em pontos conhecidos (ponte, PN, estaca visível) e adicione um ponto de referência com o km daquele momento.</span></div>
           <div class="cal-row">
@@ -393,6 +410,7 @@ h3{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.1
 <input type="file" id="fSrt" accept=".srt,.SRT,.mp4,.MP4,.mov,.MOV,video/*" multiple hidden>
 <input type="file" id="fBase" accept=".xlsx,.xlsm,.xls" hidden>
  <input type="file" id="fLogo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+<input type="file" id="fSeq" accept="video/*,.mp4,.mov,.MP4,.MOV,.srt,.SRT" multiple hidden>
 <input type="file" id="fVideo" accept="video/*,.mp4,.mov,.MP4,.MOV" hidden>
 <div class="drop" id="drop" hidden>Solte a legenda .SRT, o vídeo ou a base .xlsx</div>
 
@@ -431,7 +449,7 @@ function buildChecks(){
   }};
   mk(OPTS_GERAL,$('ckGeral')); mk(OPTS_SUPER,$('ckSuper'));
   const p=recall('params',{});
-  if(p.angle!=null)$('pAngle').value=p.angle; if(p.mini!=null)$('pMini').checked=p.mini; if(p.miniSize)$('pMiniSize').value=p.miniSize; if(p.miniSpan)$('pMiniSpan').value=p.miniSpan; if(p.map)$('pMap').value=p.map; if(p.logos!=null)$('pLogos').checked=p.logos; if(p.logoSize)$('pLogoSize').value=p.logoSize; if(p.bal!=null)$('pBal').checked=p.bal; if(p.balPac!=null)$('pBalPac').checked=p.balPac; for(const [k,id] of [['balMode','pBalMode'],['balWin','pBalWin'],['balStep','pBalStep'],['balMax','pBalMax'],['balYaw','pBalYaw'],['balPitch','pBalPitch'],['balTer','pBalTer'],['balFov','pBalFov']]) if(p[k]!=null&&p[k]!=='') $(id).value=p[k]; if(p.sense)$('pSense').value=p.sense; if(p.mode)$('pMode').value=p.mode;
+  if(p.angle!=null)$('pAngle').value=p.angle; if(p.mini!=null)$('pMini').checked=p.mini; if(p.miniSize)$('pMiniSize').value=p.miniSize; if(p.miniSpan)$('pMiniSpan').value=p.miniSpan; if(p.map)$('pMap').value=p.map; if(p.logos!=null)$('pLogos').checked=p.logos; if(p.logoSize)$('pLogoSize').value=p.logoSize; if(p.bal!=null)$('pBal').checked=p.bal; if(p.balPac!=null)$('pBalPac').checked=p.balPac; for(const [k,id] of [['balMode','pBalMode'],['balWin','pBalWin'],['balStep','pBalStep'],['balMax','pBalMax'],['balYaw','pBalYaw'],['balPitch','pBalPitch'],['balTer','pBalTer'],['balFov','pBalFov']]) if(p[k]!=null&&p[k]!=='') $(id).value=p[k]; if(p.sense)$('pSense').value=p.sense; if(p.mode)$('pMode').value=p.mode; if(p.comp)$('pComp').value=p.comp;
   if(p.ref)$('pRef').value=p.ref; if(p.prec)$('pPrec').value=p.prec; if(p.font)$('pFont').value=p.font;
   for(const id of ['pAngle','pSense','pRef','pPrec','pFont','pMini','pMiniSize','pMiniSpan','pMap','pLogos','pLogoSize','pBal','pBalMode','pBalWin','pBalStep','pBalMax','pBalPac','pBalYaw','pBalPitch','pBalTer','pBalFov']) $(id).addEventListener('input',()=>{saveOpts();refresh()});
 }
@@ -441,7 +459,7 @@ function opts(){
   o.font=Math.max(1,parseInt($('pFont').value)||80); o.mini=$('pMini').checked; o.miniSize=+$('pMiniSize').value||0.24; o.miniSpan=+$('pMiniSpan').value||800; o.map=$('pMap').value; o.logos=$('pLogos').checked; o.logoSize=+$('pLogoSize').value||0.065; o.bal=$('pBal').checked; o.balMode=$('pBalMode').value; o.balWin=Math.max(1,+$('pBalWin').value||50); o.balStep=+$('pBalStep').value||1000; o.balMax=+$('pBalMax').value||1000; o.balPac=$('pBalPac').checked; o.balYaw=+$('pBalYaw').value||0; o.balPitch=+$('pBalPitch').value||0; o.balTer=+$('pBalTer').value||0; o.balFov=+$('pBalFov').value||0; return o;
 }
 function saveOpts(){const o=opts();const c={};document.querySelectorAll('[id^=ck_]').forEach(cb=>c[cb.dataset.k]=cb.checked);
-  store('checks',c);store('params',{mode:$('pMode').value,angle:o.angle,sense:o.sense,ref:o.ref,prec:o.prec,font:o.font,mini:o.mini,miniSize:$('pMiniSize').value,miniSpan:$('pMiniSpan').value,map:o.map,logos:o.logos,logoSize:$('pLogoSize').value,bal:o.bal,balMode:o.balMode,balWin:$('pBalWin').value,balStep:o.balStep,balMax:o.balMax,balPac:o.balPac,balYaw:$('pBalYaw').value,balPitch:$('pBalPitch').value,balTer:$('pBalTer').value,balFov:$('pBalFov').value});}
+  store('checks',c);store('params',{mode:$('pMode').value,comp:$('pComp').value,angle:o.angle,sense:o.sense,ref:o.ref,prec:o.prec,font:o.font,mini:o.mini,miniSize:$('pMiniSize').value,miniSpan:$('pMiniSpan').value,map:o.map,logos:o.logos,logoSize:$('pLogoSize').value,bal:o.bal,balMode:o.balMode,balWin:$('pBalWin').value,balStep:o.balStep,balMax:o.balMax,balPac:o.balPac,balYaw:$('pBalYaw').value,balPitch:$('pBalPitch').value,balTer:$('pBalTer').value,balFov:$('pBalFov').value});}
 
 /* ---------- mensagens ---------- */
 function msg(t,kind=''){ $('msg').textContent=t; $('msgDot').className='dot '+kind; }
@@ -629,6 +647,93 @@ function linesFor(r,o){
 const srtText=(lines,o)=>`<font size="${o.font}">${lines.join('\n')}</font>`;
 
 /* ---------- interface ---------- */
+/* ---------- vídeos em sequência: vários arquivos numa linha do tempo única ---------- */
+const isSeq=()=>$('pComp').value==='seq';
+const SEQ={items:[],off:[],total:0,pending:{}};
+let seqId=0;
+const stemOf=n=>String(n||'').replace(/\.[^.]+$/,'').toLowerCase();
+const probeDur=url=>new Promise(res=>{const t=document.createElement('video'); t.preload='metadata'; t.muted=true;
+  t.onloadedmetadata=()=>{const d=t.duration; t.removeAttribute('src'); t.load(); res(d)}; t.onerror=()=>res(NaN); t.src=url});
+function seqCalc(){ let o=0; SEQ.off=SEQ.items.map(it=>{const x=o; o+=isFinite(it.dur)?it.dur*1000:0; return x}); SEQ.total=o }
+function segAt(ms){ let i=0; while(i<SEQ.items.length-1&&ms>=SEQ.off[i+1]) i++; return i }
+const totalDurMs=()=>isSeq()?SEQ.total:($('video').duration*1000);
+const gms=()=>(isSeq()?(S.segOff||0):0)+$('video').currentTime*1000;
+async function loadSeg(i,localMs,autoplay){
+  const it=SEQ.items[i], v=$('video'); if(!it) return;
+  S.segIdx=i; S.segOff=SEQ.off[i];
+  if(v.getAttribute('src')!==it.url){
+    v.onerror=null; v.onloadedmetadata=null; v.hidden=false; v.src=it.url;
+    await new Promise(res=>{const ok=()=>{v.removeEventListener('loadedmetadata',ok);res()}; v.addEventListener('loadedmetadata',ok)});
+    v.defaultPlaybackRate=v.playbackRate=speed(); layoutOverlays();
+  }
+  if(Math.abs(v.currentTime*1000-localMs)>30) await new Promise(r=>{const h=()=>{v.removeEventListener('seeked',h);r()}; v.addEventListener('seeked',h); v.currentTime=Math.max(0,localMs/1000)});
+  $('stageEmpty').hidden=true; $('vidBar').hidden=false;
+  $('vidName').textContent=`${i+1}/${SEQ.items.length} · ${it.name}`; $('stageHint').textContent=it.name; $('stageHint').style.textTransform='none';
+  if(autoplay) await v.play().catch(()=>{});
+}
+function seekGlobal(ms){ if(!isSeq()){ $('video').currentTime=ms/1000; return } if(!SEQ.items.length) return; const i=segAt(ms); loadSeg(i,ms-SEQ.off[i],false) }
+async function seqAdd(files){
+  const vids=[], srts=[];
+  for(const f of files){ const n=f.name.toLowerCase(); if(n.endsWith('.srt')) srts.push(f); else if(f.type.startsWith('video/')||/\.(mp4|mov)$/.test(n)) vids.push(f) }
+  if(!vids.length&&!srts.length){msg('Use arquivos de vídeo (.MP4/.MOV) e legendas (.SRT).','err');return}
+  msg('Lendo arquivos…','busy');
+  for(const f of srts){ const fr=parseSrt(await f.text()); if(!fr.length){msg(`${f.name} não tem coordenadas no formato DJI.`,'warn');continue}
+    const it=SEQ.items.find(x=>stemOf(x.name)===stemOf(f.name)); if(it){it.srtName=f.name;it.frames=fr} else SEQ.pending[stemOf(f.name)]={name:f.name,frames:fr} }
+  for(const f of vids){ const url=URL.createObjectURL(f), dur=await probeDur(url);
+    if(!isFinite(dur)){URL.revokeObjectURL(url); msg(`O navegador não abriu ${f.name} (vídeos em H.265/HEVC costumam falhar).`,'err'); continue}
+    const it={id:++seqId,name:f.name,url,dur,srtName:null,frames:null}; const p=SEQ.pending[stemOf(f.name)]; if(p){it.srtName=p.name;it.frames=p.frames;delete SEQ.pending[stemOf(f.name)]}
+    SEQ.items.push(it) }
+  SEQ.items.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true}));
+  seqPaint(); await rebuildSeq();
+}
+function seqMove(i,d){ const j=i+d; if(j<0||j>=SEQ.items.length) return; [SEQ.items[i],SEQ.items[j]]=[SEQ.items[j],SEQ.items[i]]; seqPaint(); rebuildSeq() }
+function seqDel(i){ const it=SEQ.items.splice(i,1)[0]; if(it) URL.revokeObjectURL(it.url); seqPaint(); rebuildSeq() }
+function seqClear(){ SEQ.items.forEach(it=>URL.revokeObjectURL(it.url)); SEQ.items=[]; SEQ.pending={}; seqPaint(); rebuildSeq() }
+function seqPaint(){
+  seqCalc(); const tb=$('seqList'); tb.textContent=''; const man=isManual();
+  $('seqEmpty').hidden=SEQ.items.length>0;
+  SEQ.items.forEach((it,i)=>{
+    const tr=document.createElement('tr');
+    const c=(txt,cls)=>{const td=document.createElement('td'); if(cls) td.className=cls; td.textContent=txt; return td};
+    tr.appendChild(c(String(i+1),'n'));
+    const tdv=c(it.name,'nm'); const sm=document.createElement('small'); sm.textContent=' · '+fmtDur(it.dur); tdv.appendChild(sm); tr.appendChild(tdv);
+    const tds=c(man?'—':(it.srtName||'falta a legenda .SRT'),man?'':(it.srtName?'':'miss')); tr.appendChild(tds);
+    const act=document.createElement('td'); act.className='act';
+    for(const [lab,fn,tit] of [['↑',()=>seqMove(i,-1),'Subir'],['↓',()=>seqMove(i,1),'Descer'],['Remover',()=>seqDel(i),'Remover da sequência']]){const b=document.createElement('button'); b.type='button'; b.className='btn-sm'; b.textContent=lab; b.title=tit; b.setAttribute('aria-label',tit+' '+it.name); b.onclick=fn; act.appendChild(b)}
+    tr.appendChild(act); tb.appendChild(tr);
+  });
+  $('seqInfo').textContent=SEQ.items.length?`${SEQ.items.length} vídeo(s) · duração total ${fmtDur(SEQ.total/1000)}`:'—';
+}
+async function rebuildSeq(){
+  if(!isSeq()) return;
+  stopPlay(); seqCalc(); const items=SEQ.items, v=$('video');
+  S.videoName=items.length?items[0].name.replace(/(\.[^.]+)$/,'_SEQ$1'):null;
+  if(!items.length){ v.removeAttribute('src'); v.load(); v.hidden=true; $('stageEmpty').hidden=false; $('vidBar').hidden=true; $('stageHint').textContent='Prévia sem vídeo';
+    S.frames=null;S.recs=null;P=null;$('slider').max=0; refresh(); videoStatus(); return }
+  await loadSeg(0,0,false);
+  if(isManual()){ calLoad(); buildManual(); videoStatus(); return }
+  const miss=items.filter(it=>!it.frames);
+  if(miss.length){ S.frames=null;S.recs=null;P=null;$('slider').max=0; refresh(); videoStatus(); msg(`Falta a legenda .SRT de: ${miss.map(m=>m.name).join(', ')}. Adicione o .SRT com o mesmo nome do vídeo.`,'warn'); return }
+  const all=[]; let n=0;
+  items.forEach((it,i)=>{ const off=SEQ.off[i], dur=it.dur*1000;
+    for(const f of it.frames){ if(f.ms>=dur) continue; const e=Math.min(toMs(f.t1),dur);
+      all.push(Object.assign({},f,{ms:f.ms+off,t0:fmtT(f.ms+off),t1:fmtT(e+off),frame:++n,seg:i})) } });
+  S.manual=false; S.srtName=S.videoName; loadOff(); setData(all,S.videoName,false); videoStatus();
+}
+function setComp(){
+  const seq=isSeq(); stopPlay();
+  $('seqBox').hidden=!seq;
+  $('btnLoadVideo').textContent=seq?'Adicionar vídeos':'Importar vídeo';
+  $('btnVideo').lastChild.textContent=seq?'Adicionar vídeos do voo':'Importar vídeo do voo';
+  if(seq){ // sai do vídeo único
+    const v=$('video'); if(S.videoUrl){URL.revokeObjectURL(S.videoUrl);S.videoUrl=null} v.removeAttribute('src'); v.load(); v.hidden=true; S.videoName=null;
+    seqPaint(); setMode();
+  } else {
+    S.segOff=0; S.segIdx=0; const v=$('video'); v.removeAttribute('src'); v.load(); v.hidden=true; S.videoName=null;
+    $('stageEmpty').hidden=false; $('vidBar').hidden=true; $('stageHint').textContent='Prévia sem vídeo'; $('stageHint').style.textTransform='';
+    setMode();
+  }
+}
 /* ---------- voo sem legenda: calibração manual por km ---------- */
 const isManual=()=>$('pMode').value==='manual';
 function parseKmIn(s){
@@ -664,8 +769,8 @@ function buildManual(){
   stopPlay(); const v=$('video'); S.manual=true;
   const clear=(m)=>{S.frames=null;S.recs=null;P=null;$('slider').max=0;$('calInfo').textContent=m;refresh();videoStatus()};
   if(!S.base) return clear('Aguardando a base de estacas.');
-  if(!hasVideo()||!isFinite(v.duration)) return clear('Importe o vídeo do voo para calibrar.');
-  const T=v.duration*1000, ctrl=calControl(T);
+  if(isSeq()?!SEQ.items.length:(!hasVideo()||!isFinite(v.duration))) return clear(isSeq()?'Adicione os vídeos da sequência para calibrar.':'Importe o vídeo do voo para calibrar.');
+  const T=totalDurMs(), ctrl=calControl(T);
   if(!ctrl) return clear('Informe o KM inicial e o KM final do vídeo, por exemplo 071+000.');
   const fps=30, n=Math.max(2,Math.floor(T/1000*fps)), frames=[];
   for(let i=0;i<n;i++){ const ms=i*1000/fps, km=kmAtTime(ctrl,ms), k2=kmAtTime(ctrl,Math.min(T,ms+1000)), ax=axisAt(km), dir=(k2<km)?-1:1;
@@ -676,7 +781,7 @@ function buildManual(){
      recs:frames.map(f=>Object.assign({},f,{off:0,side:'E'}))};
   S.frames=frames; S.recs=P.recs; S.srtName=S.videoName; S.demo=false; MV.view=null;
   prepMerc(); prepPose(); S.trend=frames[n-1].km<frames[0].km?-1:1;
-  S.cur=Math.min(msToIdx(v.currentTime*1000),n-1);
+  S.cur=Math.min(msToIdx(gms()),n-1);
   $('slider').max=n-1; $('slider').value=S.cur;
   const dist=ctrl.slice(1).reduce((acc,p,i)=>acc+Math.abs(p.km-ctrl[i].km),0);
   $('calInfo').textContent=`${(dist/1000).toFixed(2).replace('.',',')} km em ${fmtDur(T/1000)} · velocidade média ${Math.round(dist/(T/1000)*3.6)} km/h · ${ctrl.length-2} ponto(s) de referência`;
@@ -689,7 +794,7 @@ function calPaint(){
   for(const p of pts){
     const tr=document.createElement('tr');
     const go=document.createElement('button'); go.type='button'; go.className='btn-sm'; go.textContent=fmtClock(p.t); go.title='Ir para este momento';
-    go.onclick=()=>{ if(hasVideo()){ $('video').currentTime=p.t/1000 } };
+    go.onclick=()=>{ if(hasVideo()) seekGlobal(p.t) };
     const inp=document.createElement('input'); inp.value=p.km; inp.placeholder='072+410'; inp.setAttribute('aria-label','KM no momento '+fmtClock(p.t));
     inp.oninput=()=>{ CAL.pts[p.i].km=inp.value; inp.setAttribute('aria-invalid',String(!isFinite(parseKmIn(inp.value)))); calSave(); calRebuild() };
     const del=document.createElement('button'); del.type='button'; del.className='btn-sm'; del.textContent='Excluir';
@@ -702,9 +807,10 @@ let calT=null; const calRebuild=()=>{clearTimeout(calT); calT=setTimeout(buildMa
 function setMode(){
   const man=isManual();
   document.querySelectorAll('.srtOnly').forEach(e=>e.hidden=man);
-  $('calBox').hidden=!man; $('btnLoad').hidden=man; $('corrBox').hidden=man; $('loadedBox').hidden=man;
-  $('actions').style.gridTemplateColumns=man?'repeat(2,minmax(0,1fr))':'';
-  if(man){ calLoad(); buildManual() }
+  $('calBox').hidden=!man; $('btnLoad').hidden=man||isSeq(); $('corrBox').hidden=man; $('loadedBox').hidden=man;
+  $('actions').style.gridTemplateColumns=(man||isSeq())?'repeat(2,minmax(0,1fr))':'';
+  if(isSeq()){ seqPaint(); rebuildSeq() }
+  else if(man){ calLoad(); buildManual() }
   else { S.manual=false; if(S.srtData){ S.srtName=S.srtData.name; loadOff(); setData(S.srtData.frames,S.srtData.name,S.srtData.demo) } else { S.frames=null;S.recs=null;P=null;$('slider').max=0;refresh() } }
   videoStatus();
 }
@@ -1092,6 +1198,7 @@ const stem=n=>String(n||'').replace(/\.[^.]+$/,'').replace(/\s*\(exemplo\)$/,'')
 function fmtDur(s){return `${Math.floor(s/60)} min ${String(Math.round(s%60)).padStart(2,'0')} s`}
 function videoStatus(){
   const v=$('video');
+  if(isSeq()){ $('kVideo').textContent=SEQ.items.length?`${SEQ.items.length} vídeo(s) em sequência · ${fmtDur(SEQ.total/1000)}`+(isManual()?(S.frames?' · calibrado pelo km informado':' · aguardando calibração'):(S.frames?' · legendas juntadas':' · faltam legendas')):'Nenhum vídeo na sequência'; return }
   if(!hasVideo()){$('kVideo').textContent='Nenhum vídeo importado';return}
   let t=S.videoName+(isFinite(v.duration)?' · '+fmtDur(v.duration):'');
   if(isManual()) t+=S.frames?' · calibrado pelo km informado':' · aguardando calibração';
@@ -1121,7 +1228,7 @@ function removeVideo(){
 }
 function syncFromVideo(){
   const v=$('video'); if(!hasVideo()||!S.frames) return;
-  const i=msToIdx(v.currentTime*1000); if(i!==S.cur) setCur(i);
+  const i=msToIdx(gms()); if(i!==S.cur) setCur(i);
   if(!v.paused&&!v.ended){ if(v.requestVideoFrameCallback) v.requestVideoFrameCallback(syncFromVideo); else requestAnimationFrame(syncFromVideo); }
 }
 function route(file){
@@ -1137,9 +1244,11 @@ function msToIdx(ms){const f=S.frames;let lo=0,hi=f.length-1;while(lo<hi){const 
 function setCur(i){S.cur=i;$('slider').value=i;showFrame()}
 const speed=()=>+$('pSpeed').value||1;
 const spTxt=s=>String(s).replace('.',',')+'x';
-function stopPlay(){S.playing=false;clearInterval(S.timer);const v=$('video');if(hasVideo()&&!v.paused)v.pause();$('btnPlay').textContent='▶ Reproduzir'}
+function stopPlay(){S.playing=false;S.wantPlay=false;clearInterval(S.timer);const v=$('video');if(hasVideo()&&!v.paused)v.pause();$('btnPlay').textContent='▶ Reproduzir'}
 function startPlay(){
   if(!S.frames) return; S.playing=true; $('btnPlay').textContent='❚❚ Pausar'; const v=$('video');
+  S.wantPlay=true;
+  if(isSeq()&&SEQ.items.length){ if(S.cur>=S.frames.length-1) setCur(0); const ms=S.frames[S.cur].ms, k=segAt(ms); loadSeg(k,ms-SEQ.off[k],true); return }
   if(hasVideo()){ if(S.cur>=S.frames.length-1) setCur(0); if(Math.abs(v.currentTime*1000-S.frames[S.cur].ms)>100) v.currentTime=S.frames[S.cur].ms/1000; v.defaultPlaybackRate=v.playbackRate=speed(); v.play().catch(()=>{stopPlay();msg('O navegador bloqueou a reprodução. Clique em Reproduzir de novo.','warn')}); return}
   if(S.cur>=S.frames.length-1) setCur(0);
   let t0=performance.now(), m0=S.frames[S.cur].ms, sp=speed();
@@ -1192,11 +1301,12 @@ const VX={busy:false,cancel:false};
 function setBusy(b){VX.busy=b; for(const id of ['btnLoad','btnLoadVideo','btnExport','btnExportVideo','btnPlay','slider','btnVideo2','btnVideoOff','vRes','vQual']) $(id).disabled=b; $('vProg').hidden=!b;}
 async function exportVideo(){
   if(VX.busy) return;
-  if(!hasVideo()){msg('Importe o vídeo do voo antes de exportar.','warn');$('fVideo').click();return}
+  if(isSeq()){ if(!SEQ.items.length){msg('Adicione os vídeos da sequência antes de exportar.','warn');$('fSeq').click();return} }
+  else if(!hasVideo()){msg('Importe o vídeo do voo antes de exportar.','warn');$('fVideo').click();return}
   if(!S.recs){msg(S.frames?'Carregue a base de estacas antes de exportar.':'Carregue a legenda .SRT do voo primeiro.','warn');return}
   if(S.demo){msg('Carregue a legenda .SRT completa deste vídeo antes de exportar (o exemplo tem só 1 quadro por segundo).','warn');return}
   const mime=pickMime(); if(!mime||!HTMLCanvasElement.prototype.captureStream){msg('Este navegador não grava vídeo. Use o Google Chrome ou o Microsoft Edge atualizados.','err');return}
-  const v=$('video'); stopPlay();
+  const v=$('video'); stopPlay(); if(isSeq()) await loadSeg(0,0,false);
   const vw=v.videoWidth, vh=v.videoHeight; if(!vw||!vh){msg('O vídeo ainda não terminou de abrir. Aguarde e tente de novo.','warn');return}
   const target=+$('vRes').value; const sc=target&&vh>target?target/vh:1;
   const W=Math.round(vw*sc/2)*2, H=Math.round(vh*sc/2)*2;
@@ -1204,7 +1314,9 @@ async function exportVideo(){
   const fps=Math.min(60,Math.max(15,Math.round(1000/(diffs[diffs.length>>1]||33.3))));
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d',{alpha:false});
   const o=opts(); const B=overlayBoxes(W,H,o); const mw=Math.round(B.mini.w), mh=Math.round(B.mini.h), mx=Math.round(B.mini.x), my=Math.round(B.mini.y);
-  const draw=()=>{g.drawImage(v,0,0,W,H); const i=msToIdx(v.currentTime*1000); if(i!==S.cur){S.cur=i}
+  const draw=()=>{ const a=v.videoWidth||W, c=v.videoHeight||H;
+    if(Math.abs(a/c-W/H)>0.01){ g.fillStyle='#000'; g.fillRect(0,0,W,H); const r=Math.min(W/a,H/c); g.drawImage(v,(W-a*r)/2,(H-c*r)/2,a*r,c*r) } else g.drawImage(v,0,0,W,H);
+    const i=msToIdx(gms()); if(i!==S.cur){S.cur=i}
     drawBalloons(g,i,W,H,o);
     if(o.mini) drawMiniInto(g,mx,my,mw,mh,o,true);
     for(const s of ['L','R']) if(B[s]){ g.shadowColor='rgba(0,0,0,.35)'; g.shadowBlur=H*0.006; g.drawImage(LOGO[s].img,B[s].x,B[s].y,B[s].w,B[s].h); g.shadowBlur=0 }
@@ -1217,18 +1329,21 @@ async function exportVideo(){
   try{
     if(o.mini) await preloadMiniTiles(mw,o);
     if(VX.cancel){restore(); msg('Exportação do vídeo cancelada.',''); return}
-    v.pause(); await new Promise(r=>{v.onseeked=()=>{v.onseeked=null;r()}; v.currentTime=0});
-    draw(); rec.start(1000);
-    const dur=v.duration, sp=speed();
-    let alive=true;
+    const sp=speed(), segs=isSeq()?SEQ.items.length:1, total=isSeq()?SEQ.total:v.duration*1000;
+    let alive=false;
     const loop=()=>{ if(!alive) return; draw();
-      const p=Math.min(1,v.currentTime/dur); $('vBar').style.width=(p*100).toFixed(1)+'%';
-      const left=Math.max(0,dur-v.currentTime)/sp;
+      const p=Math.min(1,gms()/total); $('vBar').style.width=(p*100).toFixed(1)+'%';
+      const left=Math.max(0,total-gms())/1000/sp;
       $('vProgTxt').textContent=`Gravando ${Math.round(p*100)}% · faltam ${fmtDur(left)} · ${W}×${H}${sp!==1?' · '+spTxt(sp):''}`;
       if(v.requestVideoFrameCallback) v.requestVideoFrameCallback(loop); else requestAnimationFrame(loop); };
-    const done=new Promise(res=>{v.onended=res; VX.stop=res});
-    v.muted=true; v.defaultPlaybackRate=v.playbackRate=sp; await v.play(); loop();
-    await done; alive=false; draw();
+    for(let k=0;k<segs&&!VX.cancel;k++){
+      if(isSeq()) await loadSeg(k,0,false); else { v.pause(); await new Promise(r=>{v.onseeked=()=>{v.onseeked=null;r()}; v.currentTime=0}) }
+      draw(); if(k===0) rec.start(1000); else if(rec.state==='paused') rec.resume();
+      const done=new Promise(res=>{v.onended=res; VX.stop=res});
+      v.muted=true; v.defaultPlaybackRate=v.playbackRate=sp; alive=true; await v.play(); loop();
+      await done; alive=false; draw();
+      if(k<segs-1&&rec.state==='recording') rec.pause();
+    }
     await new Promise(r=>setTimeout(r,250));
     const stopped=new Promise(r=>rec.onstop=r); rec.stop(); await stopped; stream.getTracks().forEach(t=>t.stop());
     if(VX.cancel){restore(); msg('Exportação do vídeo cancelada.',''); return}
@@ -1255,8 +1370,11 @@ async function exportCsv(){
 /* ---------- eventos ---------- */
 $('btnLoad').onclick=()=>$('fSrt').click();
 $('btnBase').onclick=()=>$('fBase').click();
-$('btnVideo').onclick=$('btnVideo2').onclick=$('btnLoadVideo').onclick=()=>$('fVideo').click();
-$('btnVideoOff').onclick=()=>{removeVideo();msg('Vídeo removido','')};
+$('btnVideo').onclick=$('btnVideo2').onclick=$('btnLoadVideo').onclick=()=>(isSeq()?$('fSeq'):$('fVideo')).click();
+$('seqAddBtn').onclick=()=>$('fSeq').click(); $('seqClearBtn').onclick=seqClear;
+$('fSeq').onchange=e=>{const fs=[...e.target.files]; if(fs.length) seqAdd(fs); e.target.value=''};
+$('pComp').addEventListener('change',()=>{saveOpts();setComp()});
+$('btnVideoOff').onclick=()=>{ if(isSeq()){seqClear();msg('Sequência removida','');return} removeVideo();msg('Vídeo removido','')};
 $('btnSound').onclick=()=>{const v=$('video');v.muted=!v.muted;$('btnSound').setAttribute('aria-pressed',String(!v.muted));$('btnSound').textContent=v.muted?'Som desligado':'Som ligado'};
 $('btnFull').onclick=()=>{const st=$('stage');if(document.fullscreenElement){document.exitFullscreen().catch(()=>{})}else if(st.requestFullscreen){st.requestFullscreen().catch(()=>msg('Tela cheia não está disponível nesta janela.','warn'))}else msg('Tela cheia não está disponível nesta janela.','warn')};
 document.addEventListener('fullscreenchange',()=>{$('btnFull').textContent=document.fullscreenElement?'Sair da tela cheia':'Tela cheia';setTimeout(showFrame,60)});
@@ -1281,7 +1399,7 @@ $('pMode').addEventListener('change',()=>{saveOpts();setMode()});
 for(const id of ['calIni','calFim']) $(id).addEventListener('input',()=>{CAL[id==='calIni'?'ini':'fim']=$(id).value; calSave(); calRebuild()});
 $('calAdd').onclick=()=>{
   if(!hasVideo()){msg('Importe o vídeo antes de adicionar pontos.','warn');return}
-  const v=$('video'), ms=Math.round(v.currentTime*1000); if(ms<=0||ms>=v.duration*1000){msg('Pause o vídeo num ponto entre o início e o fim.','warn');return}
+  const ms=Math.round(gms()); if(ms<=0||ms>=totalDurMs()){msg('Pause o vídeo num ponto entre o início e o fim.','warn');return}
   const r=S.recs&&S.recs[msToIdx(ms)]; const km=r&&r.km!=null?fmtKm(r.km,'1'):'';
   CAL.pts.push({t:ms,km}); calSave(); calPaint(); buildManual();
   const rows=[...$('calList').querySelectorAll('input')]; const idx=CAL.pts.map(p=>p.t).sort((a,b)=>a-b).indexOf(ms); if(rows[idx]){rows[idx].focus();rows[idx].select()}
@@ -1300,18 +1418,18 @@ if($('btnClear')) $('btnClear').onclick=()=>{stopPlay(); S.frames=null;S.recs=nu
   if(!S.baseFromFile){S.base=null;baseStatus('Nenhuma base carregada','')}
   $('slider').max=0; refresh(); msg('Legenda removida','');};
 $('btnBaseForget').onclick=async()=>{await cacheSet(null); $('btnBaseForget').hidden=true; baseStatus(S.baseFromFile?'Base em uso, mas não fica mais salva neste navegador':'Nenhuma base carregada',S.baseFromFile?'warn':'')};
-$('slider').oninput=e=>{S.cur=+e.target.value; const v=$('video'); if(hasVideo()&&S.frames) v.currentTime=S.frames[S.cur].ms/1000; showFrame()};
+$('slider').oninput=e=>{S.cur=+e.target.value; if((isSeq()?SEQ.items.length:hasVideo())&&S.frames) seekGlobal(S.frames[S.cur].ms); showFrame()};
 $('btnPlay').onclick=()=>S.playing?stopPlay():startPlay();
 $('video').addEventListener('play',()=>{S.playing=true;$('btnPlay').textContent='❚❚ Pausar';syncFromVideo()});
 $('video').addEventListener('pause',()=>{S.playing=false;$('btnPlay').textContent='▶ Reproduzir';syncFromVideo();drawMap()});
 $('video').addEventListener('seeked',syncFromVideo);
-$('video').addEventListener('ended',stopPlay);
+$('video').addEventListener('ended',()=>{ if(VX.busy) return; if(isSeq()&&S.wantPlay&&S.segIdx<SEQ.items.length-1){ loadSeg(S.segIdx+1,0,true) } else stopPlay() });
 $('stage').addEventListener('click',e=>{if(hasVideo()&&e.target.id==='video'||e.target.id==='overlay'&&hasVideo())S.playing?stopPlay():startPlay()});
 let dragN=0;
 addEventListener('dragenter',e=>{e.preventDefault();dragN++;$('drop').hidden=false});
 addEventListener('dragleave',()=>{if(--dragN<=0){dragN=0;$('drop').hidden=true}});
 addEventListener('dragover',e=>e.preventDefault());
-addEventListener('drop',e=>{e.preventDefault();dragN=0;$('drop').hidden=true;[...e.dataTransfer.files].forEach(route)});
+addEventListener('drop',e=>{e.preventDefault();dragN=0;$('drop').hidden=true; const fs=[...e.dataTransfer.files]; if(isSeq()) seqAdd(fs); else fs.forEach(route)});
 addEventListener('resize',()=>{showFrame();drawMap()});
 (function mapEvents(){
   const cv=$('map'), dpr=()=>window.devicePixelRatio||1;
@@ -1347,7 +1465,7 @@ addEventListener('resize',()=>{showFrame();drawMap()});
   } else { if(!emb) baseStatus('Carregue a base de estacas (.xlsx) — ela é lida só no seu computador.',''); refresh(); }
   for(const s of ['L','R']){ const b=await kvGet('logo'+s), off=await kvGet('logo'+s+'off');
     if(b) await setLogo(s,b,false); else if(!off&&LOGO_DEF&&LOGO_DEF[s]) await setLogo(s,defLogoBlob(s),false,true); }
-  paintLogoUi(); layoutOverlays(); if(isManual()) setMode();
+  paintLogoUi(); layoutOverlays(); if(isSeq()) setComp(); else if(isManual()) setMode();
   if(!emb){ const cached=await cacheGet();
     if(cached&&cached.st&&cached.count){S.base=cached;S.baseFromFile=true;showBase(cached);if(S.frames)recompute()} }
 })();
